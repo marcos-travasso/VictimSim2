@@ -18,60 +18,34 @@ WORST_POP_CHANCE = 0.1
 POPULATION_PERCENTAGE = 5
 matrix = read_matrix(90, 90, '../datasets/data_300v_90x90/env_obst.txt')
 
-MAXIMUNS = {"qPA": 0, "pulso": 0, "fResp": 0}
-MINIMUNS = {"qPA": 0, "pulso": 0, "fResp": 0}
-DEFINED_MINUMUNS = False
-
-
-def normalize(qPA, pulso, fResp, defined_minumums, maximums, minimuns):
-    if not defined_minumums:
-        minimuns = {"qPA": qPA, "pulso": pulso, "fResp": fResp}
-
-    if qPA > maximums["qPA"]:
-        maximums["qPA"] = qPA
-    if qPA < minimuns["qPA"]:
-        minimuns["qPA"] = qPA
-
-    if pulso > maximums["pulso"]:
-        maximums["pulso"] = pulso
-    if pulso < minimuns["pulso"]:
-        minimuns["pulso"] = pulso
-
-    if fResp > maximums["fResp"]:
-        maximums["fResp"] = fResp
-    if fResp < minimuns["fResp"]:
-        minimuns["fResp"] = fResp
-
-
-with open(f'cluster{CLUSTER}.csv', newline='') as csvfile:
-    reader = csv.reader(csvfile, delimiter=',', quotechar='|')
-    for row in reader:
-        if row[0] == "ID":
-            continue
-        victim = {"id": int(row[0])}
-        victim["coords"] = eval(f"{row[1:3]}".replace('"', "").replace("'",""))[0]
-        victim["coords"] = (victim["coords"][0] + BASE[0], victim["coords"][1] + BASE[1])
-        victim["feat"] = eval(f"{row[3:9]}".replace('"', "").replace("'",""))[0]
-        victims[victim["id"]] = victim
-        normalize(victim["feat"][3], victim["feat"][4], victim["feat"][5], DEFINED_MINUMUNS, MAXIMUNS, MINIMUNS)
-        DEFINED_MINUMUNS = True
+MAXIMUNS = {'qPA': 8.733333, 'pulso': 199.889794, 'fResp': 21.996464}
+MINIMUNS = {'qPA': -8.733333, 'pulso': 0.014052, 'fResp': 0.002916}
 
 cache = {}
 
-    
+
+def normalize_values(qPA, pulso, fResp):
+    normalized_qPA = (qPA - MINIMUNS["qPA"]) / (MAXIMUNS["qPA"] - MINIMUNS["qPA"])
+    normalized_pulso = (pulso - MINIMUNS["pulso"]) / (MAXIMUNS["pulso"] - MINIMUNS["pulso"])
+    normalized_fResp = (fResp - MINIMUNS["fResp"]) / (MAXIMUNS["fResp"] - MINIMUNS["fResp"])
+
+    return normalized_qPA, normalized_pulso, normalized_fResp
+
+
+def cached_gravity_cost(feat):
+    if feat in cache:
+        return cache[feat]
+    grav = predict_grav_nn(feat[0], feat[1], feat[2])
+    cache[feat] = grav
+    return grav
+
+
 def cached_shortest_path(start, end):
     if (start, end) in cache:
         return cache[(start, end)]
     distance, _ = shortest_path(matrix, start, end)
     cache[(start, end)] = distance
     return distance
-
-def cached_gravity_cost(normalized_qPA, normalized_pulso, normalized_fResp):
-    if(normalized_qPA, normalized_pulso, normalized_fResp) in cache:
-        return cache[(normalized_qPA, normalized_pulso, normalized_fResp)]
-    grav = predict_grav_nn(normalized_qPA, normalized_pulso, normalized_fResp)
-    cache[(normalized_qPA, normalized_pulso, normalized_fResp)] = grav
-    return grav
 
 
 def get_list_score(victims):
@@ -84,20 +58,16 @@ def get_list_score(victims):
 
     for victim in victims:
         c = victim["coords"]
-        feat = victim["feat"] # [id, sPA, dPA, qPA, pulse, fRes]
 
         distance = cached_shortest_path(last_pos, c)
         last_pos = c
         # log(f"{last_pos} -> {c} = {distance}")
         path_cost += distance
 
-        qPA, pulso, fRes = feat[3], feat[4], feat[5]
-        normalized_qPA, normalized_pulso, normalized_fResp = normalize_values(qPA, pulso, fRes)
-        grav = cached_gravity_cost(normalized_qPA, normalized_pulso, normalized_fResp)
-
-        grav_cost += grav * path_cost
+        grav_cost += victim["grav"] * path_cost
 
         if not can_return(c, path_cost):
+            score += victim["grav"]
             out_of_time_victims.append(victim)
 
     distance = cached_shortest_path(last_pos, BASE)
@@ -148,15 +118,7 @@ def predict_grav_nn(qPA, pulso, fResp):
     return predicted_grav[0][0]
 
 
-def normalize_values(qPA, pulso, fResp):
-    normalized_qPA = (qPA - MINIMUNS["qPA"]) / (MAXIMUNS["qPA"] - MINIMUNS["qPA"])
-    normalized_pulso = (pulso - MINIMUNS["pulso"]) / (MAXIMUNS["pulso"] - MINIMUNS["pulso"])
-    normalized_fResp = (fResp - MINIMUNS["fResp"]) / (MAXIMUNS["fResp"] - MINIMUNS["fResp"])
-
-    return normalized_qPA, normalized_pulso, normalized_fResp
-
-
-def run_gen(gen, population = None):
+def run_gen(gen, population=None):
     if not population:
         population = run_population()
     else:
@@ -243,6 +205,7 @@ def order_crossover(parent1, parent2):
     return {'id': random.randint(0, 1e6), 'victims': child1_victims}, \
         {'id': random.randint(0, 1e6), 'victims': child2_victims}
 
+
 def crossover_population(population, total):
     offspring = []
 
@@ -263,6 +226,19 @@ def print_ids(population):
 
 def log(msg):
     print(f"[{datetime.now()}] {msg}")
+
+
+with open(f'cluster{CLUSTER}.csv', newline='') as csvfile:
+    reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+    for row in reader:
+        if row[0] == "ID":
+            continue
+        victim = {"id": int(row[0]), "coords": eval(f"{row[1:3]}".replace('"', "").replace("'", ""))[0]}
+        victim["coords"] = (victim["coords"][0] + BASE[0], victim["coords"][1] + BASE[1])
+        feat = eval(f"{row[3:9]}".replace('"', "").replace("'", ""))[0]
+        victim["feat"] = normalize_values(feat[3], feat[4], feat[5])
+        victim["grav"] = cached_gravity_cost(victim["feat"])
+        victims[victim["id"]] = victim
 
 pop = None
 for i in range(GENERATIONS):
