@@ -13,9 +13,9 @@ TIMELIMIT = 1000
 CLUSTER = 4
 POPULATION = 10_000
 GENERATIONS = 1_001
-MUTATION_RATE = 0.2
-WORST_POP_CHANCE = 0.1
-POPULATION_PERCENTAGE = 5
+MUTATION_RATE = 0.4
+WORST_POP_CHANCE = 0.25
+POPULATION_PERCENTAGE = 10
 matrix = read_matrix(90, 90, '../datasets/data_300v_90x90/env_obst.txt')
 
 MAXIMUNS = {'qPA': 8.733333, 'pulso': 199.889794, 'fResp': 21.996464}
@@ -164,7 +164,9 @@ def run_gen(gen, population=None):
 
     mutated = mutate_population(crossovered)
 
-    return mutated
+    selected.extend(mutated)
+    calculate_score(selected)
+    return selected[:POPULATION]
 
 
 def mutate_population(population):
