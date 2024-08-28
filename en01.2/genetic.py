@@ -11,7 +11,7 @@ victims = {}
 BASE = (65, 22)
 TIMELIMIT = 1000
 CLUSTER = 4
-POPULATION = 10_000
+POPULATION = 1_000
 GENERATIONS = 1_001
 MUTATION_RATE = 0.4
 WORST_POP_CHANCE = 0.25
@@ -130,8 +130,6 @@ def predict_grav_nn(qPA, pulso, fResp):
 def run_gen(gen, population=None):
     if not population:
         population = run_population()
-    else:
-        calculate_score(population)
 
     if gen % 100 == 0:
         csv_population = []
