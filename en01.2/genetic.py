@@ -21,8 +21,6 @@ matrix = read_matrix(90, 90, '../datasets/data_300v_90x90/env_obst.txt')
 MAXIMUNS = {'qPA': 8.733333, 'pulso': 199.889794, 'fResp': 21.996464}
 MINIMUNS = {'qPA': -8.733333, 'pulso': 0.014052, 'fResp': 0.002916}
 
-cache = {}
-
 
 def normalize_values(qPA, pulso, fResp):
     normalized_qPA = (qPA - MINIMUNS["qPA"]) / (MAXIMUNS["qPA"] - MINIMUNS["qPA"])
@@ -32,23 +30,33 @@ def normalize_values(qPA, pulso, fResp):
     return normalized_qPA, normalized_pulso, normalized_fResp
 
 
+gravity_cache = {}
 def cached_gravity_cost(feat):
-    if feat in cache:
-        return cache[feat]
+    if feat in gravity_cache:
+        return gravity_cache[feat]
     grav = predict_grav_nn(feat[0], feat[1], feat[2])
-    cache[feat] = grav
+    gravity_cache[feat] = grav
     return grav
 
 
+path_cache = {}
 def cached_shortest_path(start, end):
-    if (start, end) in cache:
-        return cache[(start, end)]
+    if (start, end) in path_cache:
+        return path_cache[(start, end)]
     distance, _ = shortest_path(matrix, start, end)
-    cache[(start, end)] = distance
+    path_cache[(start, end)] = distance
     return distance
 
 
+def get_score_id(victims):
+    return '-'.join([str(v['id']) for v in victims])
+
+
+score_cache = {}
 def get_list_score(victims):
+    score_id = get_score_id(victims)
+    if score_id in score_cache:
+        return score_cache[score_id]
     path_cost = 0
     grav_cost = 0
     score = 0
@@ -62,7 +70,7 @@ def get_list_score(victims):
         distance = cached_shortest_path(last_pos, c)
         last_pos = c
         # log(f"{last_pos} -> {c} = {distance}")
-        path_cost += distance
+        path_cost += distance + 1
 
         grav_cost += victim["grav"] * path_cost
 
@@ -74,6 +82,7 @@ def get_list_score(victims):
     path_cost += distance
     score += path_cost + grav_cost
     # log(out_of_time_victims)
+    score_cache[score_id] = score
     return score
 
 
@@ -123,11 +132,6 @@ def run_gen(gen, population=None):
         population = run_population()
     else:
         calculate_score(population)
-
-    for p in population:
-        if len(set([victim['id'] for victim in p['victims']])) != len(p['victims']):
-            log(f"Duplicate victims in population {p['id']}")
-            raise Exception("Duplicate victims")
 
     if gen % 100 == 0:
         csv_population = []

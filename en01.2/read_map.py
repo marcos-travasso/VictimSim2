@@ -21,7 +21,11 @@ def pretty_print_matrix(matrix):
 
 def shortest_path(matrix, start, end):
     rows, cols = len(matrix), len(matrix[0])
-    directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+    directions = [
+        (-1, 0), (1, 0), (0, -1), (0, 1),
+        (-1, -1), (-1, 1), (1, -1), (1, 1)
+    ]
+    diagonal_multiplier = 1.5
 
     if matrix[start[0]][start[1]] == 100 or matrix[end[0]][end[1]] == 100:
         return float('inf'), []
@@ -37,12 +41,13 @@ def shortest_path(matrix, start, end):
         if current_position == end:
             break
 
-        for direction in directions:
+        for i, direction in enumerate(directions):
             row, col = current_position[0] + direction[0], current_position[1] + direction[1]
             if 0 <= row < rows and 0 <= col < cols:
                 next_position = (row, col)
                 if matrix[row][col] != 100:
-                    new_distance = current_distance + matrix[row][col]
+                    cost = matrix[row][col] * diagonal_multiplier if i >= 4 else matrix[row][col]
+                    new_distance = current_distance + cost
                     if next_position not in distances or new_distance < distances[next_position]:
                         distances[next_position] = new_distance
                         previous[next_position] = current_position
