@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.cluster import KMeans
 
 from map import Map
+from genetic import Genetic
 from rescuer import Rescuer
 from vs.constants import VS
 
@@ -16,6 +17,8 @@ class RescuerBoss(Rescuer):
         self.map_victims = {}
         self.rescuers = rescuer_list
         self.victim_clusters: list = [None, None, None, None]
+        self.genetic = None
+        self.cluster_order = {}
 
     def alert_explorer_inactive(self, map, victims):
         self.map_victims.update(victims)
@@ -27,10 +30,11 @@ class RescuerBoss(Rescuer):
 
     def prepare_rescuers(self) -> None:
         print(f"Mapa encontrado contendo {len(self.map.positions)} posições")
+        self.genetic = Genetic(self.map, self.map_victims, self)
         self.cluster_victims()
         self.set_state(VS.ACTIVE)
-        for r in self.rescuers:
-            r.set_state(VS.ACTIVE)
+        for i, r in enumerate(self.rescuers):
+            r.go_save_victims(self.map, self.cluster_order[i])
 
     def cluster_victims(self) -> None:
         coordenadas = np.array([self.map_victims[id][0] for id in self.map_victims])
@@ -48,3 +52,4 @@ class RescuerBoss(Rescuer):
             cluster_data = dados_clusterizados[dados_clusterizados['Cluster'] == cluster_id]
             cluster_data.to_csv(f'cluster{cluster_id + 1}.csv', index=False)
             self.victim_clusters[cluster_id] = cluster_data.to_dict()
+            self.cluster_order[cluster_id] = self.genetic.run(cluster_id + 1)[0]["victims"]

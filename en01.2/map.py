@@ -81,6 +81,16 @@ class Map:
             time += p.difficulty * cost
         return time
 
+    def cost_path(self, actual_pos, wanted_pos, explorer):
+        path = self.get_path(actual_pos, wanted_pos, explorer)
+        cost = 0
+        before = actual_pos
+        for p in path:
+            dx, dy = before.coords[0] - p.coords[0], before.coords[1] - p.coords[1]
+            cost += explorer.COST_LINE if dx == 0 or dy == 0 else explorer.COST_DIAG
+            before = p
+        return cost
+
     def get_path(self, actual_pos, wanted_pos, explorer):
         open_list = []
         best_for = {}
