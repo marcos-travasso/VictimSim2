@@ -52,40 +52,25 @@ class Rescuer(AbstAgent):
         print()
         #print(f"{self.NAME} List of found victims received from the explorer")
         self.victims = victims
+        path = [self.map.get((self.x, self.y))]
+        last_pos = self.map.get((self.x, self.y))
 
-        # print the found victims - you may comment out
-        #for seq, data in self.victims.items():
-        #    coord, vital_signals = data
-        #    x, y = coord
-        #    print(f"{self.NAME} Victim seq number: {seq} at ({x}, {y}) vs: {vital_signals}")
-
-        #print(f"{self.NAME} time limit to rescue {self.plan_rtime}")
-
-        self.__planner()
-                  
-        self.set_state(VS.ACTIVE)
-
-    def __planner(self):
-        """ A private method that calculates the walk actions in a OFF-LINE MANNER to rescue the
-        victims. Further actions may be necessary and should be added in the
-        deliberata method"""
-
-        """ This plan starts at origin (0,0) and chooses the first of the possible actions in a clockwise manner starting at 12h.
-        Then, if the next position was visited by the explorer, the rescuer goes to there. Otherwise, it picks the following possible action.
-        For each planned action, the agent calculates the time will be consumed. When time to come back to the base arrives,
-        it reverses the plan."""
-
-        last_pos = self.map.get((0, 0))
-
-        self.plan = []
         for v in self.victims:
-            self.plan += self.map.get_path(last_pos, v["coords"], self)[1:]
+            path += self.map.get_path(last_pos, v["coords"], self)[1:]
             last_pos = v["coords"]
-            self.has_victims.add(v["coords"])
+            self.has_victims.add(v["coords"].coords)
 
-        come_back_plan = self.map.get_path(last_pos, self.map.get((0, 0)), self)
+        path += self.map.get_path(last_pos, self.map.get((self.x, self.y)), self)
 
-        self.plan = self.plan + come_back_plan
+        def get_relative_position(before, after):
+            return (after[0] - before[0], after[1] - before[1])
+
+        self.plan = [
+            get_relative_position(path[i].coords, path[i + 1].coords)
+            for i in range(len(path) - 1)
+        ]
+
+        self.set_state(VS.ACTIVE)
 
     def deliberate(self) -> bool:
         """ This is the choice of the next action. The simulator calls this
@@ -102,17 +87,15 @@ class Rescuer(AbstAgent):
         # Takes the first action of the plan (walk action) and removes it from the plan
         pos = self.plan.pop(0)
 
-        dx = self.x + pos.coords[0]
-        dy = self.y + pos.coords[1]
-        walked = self.walk(dx, dy)
+        walked = self.walk(pos[0], pos[1])
 
         # Rescue the victim at the current position
         if walked == VS.EXECUTED:
-            self.x += dx
-            self.y += dy
+            self.x += pos[0]
+            self.y += pos[1]
             #print(f"{self.NAME} Walk ok - Rescuer at position ({self.x}, {self.y})")
             # check if there is a victim at the current position
-            if pos in self.has_victims:
+            if (self.x, self.y) in self.has_victims:
                 rescued = self.first_aid() # True when rescued
                 if rescued:
                     print(f"{self.NAME} Victim rescued at ({self.x}, {self.y})")

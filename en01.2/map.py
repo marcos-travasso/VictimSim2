@@ -49,11 +49,21 @@ class Map:
 
         for r in repeated:
             if len(new_map.positions[r].neighborhood) > len(self.positions[r].neighborhood):
-                self.positions[r] = new_map.positions[r]
+                for n in new_map.positions[r].neighborhood.keys():
+                    if n not in self.positions[r].neighborhood:
+                        nn = self.get_or_create(n)
+                        self.positions[r].neighborhood[n] = nn
+                        nn.neighborhood[self.positions[r].coords] = self.positions[r]
 
         for p in new_map.positions:
             if p not in self.positions:
-                self.positions[p] = new_map.positions[p]
+                np = self.get_or_create(p)
+                self.positions[p] = np
+                for n in np.neighborhood.keys():
+                    if n not in new_map.positions[p].neighborhood:
+                        nn = self.get_or_create(n)
+                        np.neighborhood[n] = nn
+                        nn.neighborhood[np.coords] = np
 
     def visited(self, coord):
         return coord in self.positions and self.positions[coord].visited
@@ -83,6 +93,8 @@ class Map:
 
     def cost_path(self, actual_pos, wanted_pos, explorer):
         path = self.get_path(actual_pos, wanted_pos, explorer)
+        if path is None:
+            raise Exception("Path not found")
         cost = 0
         before = actual_pos
         for p in path:
