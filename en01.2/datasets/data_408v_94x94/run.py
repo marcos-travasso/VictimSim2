@@ -56,7 +56,7 @@ with open("env_vital_signals_cego.txt", mode='r') as file:
         feat = normalize_values(feat[3], feat[4], feat[5])
         grav = predict_grav_nn(feat[0], feat[1], feat[2])
         label = 1 if grav < 0.25 else 2 if grav < 0.5 else 3 if grav < 0.75 else 4
-        data.append((idd, grav, label))
+        data.append((idd, grav * 100, label))
 
 print(data)
 with open("result_cego.csv", mode='w', newline='') as file:
