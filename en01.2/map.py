@@ -59,8 +59,8 @@ class Map:
             if p not in self.positions:
                 np = self.get_or_create(p)
                 self.positions[p] = np
-                for n in np.neighborhood.keys():
-                    if n not in new_map.positions[p].neighborhood:
+                for n in new_map.positions[p].neighborhood.keys():
+                    if n not in np.neighborhood:
                         nn = self.get_or_create(n)
                         np.neighborhood[n] = nn
                         nn.neighborhood[np.coords] = np

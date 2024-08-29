@@ -16,6 +16,7 @@ class RescuerBoss(Rescuer):
         self.map = Map()
         self.map_victims = {}
         self.rescuers = rescuer_list
+        self.rescuers.append(self)
         self.victim_clusters: list = [None, None, None, None]
         self.genetic = None
         self.cluster_order = {}

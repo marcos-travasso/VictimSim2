@@ -55,8 +55,18 @@ class Rescuer(AbstAgent):
         path = [self.map.get((self.x, self.y))]
         last_pos = self.map.get((self.x, self.y))
 
+        def can_return(current_pos, current_time):
+            distance = self.map.cost_path(current_pos, path[0], self)
+            return (current_time + distance) <= 100
+
+        distance = 0
         for v in self.victims:
+            now = self.map.cost_path(last_pos, v["coords"], self)
+            if not can_return(v["coords"], distance + now):
+                break
+
             path += self.map.get_path(last_pos, v["coords"], self)[1:]
+            distance += now
             last_pos = v["coords"]
             self.has_victims.add(v["coords"].coords)
 
