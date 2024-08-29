@@ -10,7 +10,7 @@ from read_map import read_matrix, shortest_path
 victims = {}
 BASE = (65, 22)
 TIMELIMIT = 1000
-CLUSTER = 4
+CLUSTER = 1
 POPULATION = 1_000
 GENERATIONS = 1_001
 MUTATION_RATE = 0.4
@@ -82,8 +82,8 @@ def get_list_score(victims):
     path_cost += distance
     score += path_cost + grav_cost
     # log(out_of_time_victims)
-    score_cache[score_id] = score
-    return score
+    score_cache[score_id] = score, path_cost
+    return score, path_cost
 
 
 def can_return(current_pos, current_time):
@@ -97,11 +97,12 @@ def run_population():
         shuffled_list = list(victims.keys())
         random.shuffle(shuffled_list)
         victims_list = [victims[x] for x in shuffled_list]
-        score = get_list_score(victims_list)
+        score, path_cost = get_list_score(victims_list)
         population.append({
             "id": i,
             "score": score,
-            "victims": victims_list
+            "victims": victims_list,
+            "distance": path_cost
         })
     population.sort(key=lambda x: x['score'])
     return population
@@ -109,7 +110,7 @@ def run_population():
 
 def calculate_score(population):
     for i, p in enumerate(population):
-        p['score'] = get_list_score(p['victims'])
+        p['score'], p['distance'] = get_list_score(p['victims'])
     population.sort(key=lambda x: x['score'])
 
 
@@ -138,10 +139,11 @@ def run_gen(gen, population=None):
             csv_population.append({
                 "id": p['id'],
                 "score": p['score'],
+                "distance": p["distance"],
                 "victims": ' '.join([str(victim['id']) for victim in p['victims']])
             })
         with open(f'./cluster{CLUSTER}/cluster{CLUSTER}-population-gen{gen}.csv', mode='w', newline='') as file:
-            writer = csv.DictWriter(file, fieldnames=["id", "score", "victims"])
+            writer = csv.DictWriter(file, fieldnames=["id", "score", "distance", "victims"])
             writer.writeheader()
             writer.writerows(csv_population)
 
