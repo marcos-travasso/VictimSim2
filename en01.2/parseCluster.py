@@ -1,5 +1,35 @@
 import csv
 import ast
+import csv
+import random
+from datetime import datetime
+import tensorflow as tf
+import joblib
+import pandas as pd
+
+
+def predict_grav_nn(qPA, pulso, fResp):
+    model = tf.keras.models.load_model('vital_signs_model.h5')
+
+    scaler = joblib.load('scaler.save')
+
+    input_data = pd.DataFrame([[qPA, pulso, fResp]], columns=['qPA', 'pulso', 'fResp'])
+
+    input_data_scaled = scaler.transform(input_data)
+
+    predicted_grav = model.predict(input_data_scaled)
+
+    return predicted_grav[0][0]
+
+MAXIMUNS = {'qPA': 8.733333, 'pulso': 199.889794, 'fResp': 21.996464}
+MINIMUNS = {'qPA': -8.733333, 'pulso': 0.014052, 'fResp': 0.002916}
+
+def normalize_values(qPA, pulso, fResp):
+    normalized_qPA = (qPA - MINIMUNS["qPA"]) / (MAXIMUNS["qPA"] - MINIMUNS["qPA"])
+    normalized_pulso = (pulso - MINIMUNS["pulso"]) / (MAXIMUNS["pulso"] - MINIMUNS["pulso"])
+    normalized_fResp = (fResp - MINIMUNS["fResp"]) / (MAXIMUNS["fResp"] - MINIMUNS["fResp"])
+
+    return normalized_qPA, normalized_pulso, normalized_fResp
 
 for i in range(1, 5):
     order_mapping = {}
@@ -19,7 +49,11 @@ for i in range(1, 5):
             x = int(coordinates[0])
             y = int(coordinates[1])
             if victim_id in order_mapping:
-                data.append((order_mapping[victim_id], victim_id, x, y, 0.5, 3))
+                feat = eval(row["Features"])
+                feat = normalize_values(feat[3], feat[4], feat[5])
+                grav = predict_grav_nn(feat[0], feat[1], feat[2])
+                label = 1 if grav < 0.25 else 2 if grav < 0.5 else 3 if grav < 0.75 else 4
+                data.append((order_mapping[victim_id], victim_id, x, y, grav, label))
 
     data.sort()
 
