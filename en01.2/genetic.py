@@ -8,15 +8,15 @@ import pandas as pd
 from read_map import read_matrix, shortest_path
 
 victims = {}
-BASE = (65, 22)
-TIMELIMIT = 1000
-CLUSTER = 1
+BASE = (46,46)
+TIMELIMIT = 100
+CLUSTER = 4
 POPULATION = 1_000
 GENERATIONS = 1_001
 MUTATION_RATE = 0.4
 WORST_POP_CHANCE = 0.25
 POPULATION_PERCENTAGE = 10
-matrix = read_matrix(90, 90, '../datasets/data_300v_90x90/env_obst.txt')
+matrix = read_matrix(94, 94, '../datasets/data_408v_94x94/env_obst.txt')
 
 MAXIMUNS = {'qPA': 8.733333, 'pulso': 199.889794, 'fResp': 21.996464}
 MINIMUNS = {'qPA': -8.733333, 'pulso': 0.014052, 'fResp': 0.002916}
