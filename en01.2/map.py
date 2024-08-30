@@ -1,4 +1,5 @@
 import heapq
+from collections import deque
 
 from vs.constants import VS
 
@@ -48,12 +49,11 @@ class Map:
         repeated = set(self.positions.keys()).intersection(set(new_map.positions.keys()))
 
         for r in repeated:
-            if len(new_map.positions[r].neighborhood) > len(self.positions[r].neighborhood):
-                for n in new_map.positions[r].neighborhood.keys():
-                    if n not in self.positions[r].neighborhood:
-                        nn = self.get_or_create(n)
-                        self.positions[r].neighborhood[n] = nn
-                        nn.neighborhood[self.positions[r].coords] = self.positions[r]
+            for n in new_map.positions[r].neighborhood.keys():
+                if n not in self.positions[r].neighborhood:
+                    nn = self.get_or_create(n)
+                    self.positions[r].neighborhood[n] = nn
+                    nn.neighborhood[self.positions[r].coords] = self.positions[r]
 
         for p in new_map.positions:
             if p not in self.positions:
@@ -104,46 +104,23 @@ class Map:
         return cost
 
     def get_path(self, actual_pos, wanted_pos, explorer):
-        open_list = []
-        best_for = {}
-        closed_set = set()
-
-        def heuristic(node):
-            dx, dy = node.coords[0] - wanted_pos.coords[0], node.coords[1] - wanted_pos.coords[1]
-            cost = explorer.COST_LINE if dx == 0 or dy == 0 else explorer.COST_DIAG
-            return abs(dx) + abs(dy) * cost
-
-        g_score = {actual_pos: 0}
-        f_score = {actual_pos: heuristic(actual_pos)}
+        queue = deque([actual_pos])
         parent = {actual_pos: None}
-        path_to_node = {actual_pos: [actual_pos]}
-        heapq.heappush(open_list, (f_score[actual_pos], actual_pos))
 
-        while open_list:
-            _, current_node = heapq.heappop(open_list)
+        while queue:
+            current_node = queue.popleft()
 
             if current_node == wanted_pos:
-                return path_to_node[current_node]
-
-            closed_set.add(current_node)
+                path = []
+                while current_node:
+                    path.append(current_node)
+                    current_node = parent[current_node]
+                return path[::-1]
 
             for neighbor in current_node.neighborhood.values():
-                if neighbor in closed_set:
-                    continue
-
-                dx, dy = current_node.coords[0] - neighbor.coords[0], current_node.coords[1] - neighbor.coords[1]
-                cost = explorer.COST_LINE if dx == 0 or dy == 0 else explorer.COST_DIAG
-
-                tentative_g_score = g_score[current_node] + (neighbor.difficulty * cost)
-                if neighbor not in open_list or tentative_g_score < g_score[neighbor]:
+                if neighbor not in parent:
                     parent[neighbor] = current_node
-                    g_score[neighbor] = tentative_g_score
-                    f_score[neighbor] = tentative_g_score + heuristic(neighbor)
-                    if neighbor not in open_list and (
-                            neighbor not in best_for or best_for[neighbor] > f_score[neighbor]):
-                        best_for[neighbor] = f_score[neighbor]
-                        heapq.heappush(open_list, (f_score[neighbor], neighbor))
-                        path_to_node[neighbor] = path_to_node[current_node] + [neighbor]
+                    queue.append(neighbor)
 
         return None
 
